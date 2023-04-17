@@ -47,10 +47,10 @@ class Board {
 		while (!current.isEmpty()) {
 			for (Board b:current) {
 				usedBoards.add(b);
-				ArrayList<Board> preBoards = b.getPreBoards(usedBoards);
-				if (preBoards.isEmpty()) {
+				ArrayList<Board> preBoards = new ArrayList<>();
+				if (!b.getPreBoards(usedBoards,preBoards) && preBoards.isEmpty()) {
 					return step;
-				}
+				} 
 				next.addAll(preBoards);
 			}
 			step++;
@@ -62,34 +62,49 @@ class Board {
 		return -1;
 	}
 
-	private ArrayList<Board> getPreBoards(Set<Board> usedBoards) {
+	private boolean getPreBoards(Set<Board> usedBoards, ArrayList<Board> preBoards) {
 		// TODO Auto-generated method stub
 		ArrayList<Board> current = new ArrayList<>();
 		ArrayList<Board> next = new ArrayList<>();
 		Board firstBoard = new Board(map.length,map[0].length);
 		current.add(firstBoard);
+		boolean hasRecursiveBoard=false;
 		
 		for (int i=0;i<map.length;i++) {
 			for (int j=0;j<map[0].length;j++) {
+				if (i==map.length-1 && j==map[0].length-1) {
+					next = preBoards;
+				}
 				for (Board b:current) {
-					b = trySymbol('.',i,j,b);
-					if (b!=null) {
+					Board newb1 = trySymbol('.',i,j,b);
+					if (newb1!=null) {
 						b = b.clone(i,j);
-						if (i!=map.length-1 || j!=map[0].length-1 || !usedBoards.contains(b))
-							next.add(b);
+						boolean isUsedBoard = usedBoards.contains(newb1);
+						if (!hasRecursiveBoard && isUsedBoard) {
+							hasRecursiveBoard = true;
+						}
+						if (i!=map.length-1 || j!=map[0].length-1 || !isUsedBoard)
+							next.add(newb1);
 					}
-					b = trySymbol('*',i,j,b);
-					if (b!=null) {
-						if (i!=map.length-1 || j!=map[0].length-1 || !usedBoards.contains(b))
-							next.add(b);
+					Board newb2 = trySymbol('*',i,j,b);
+					if (newb2!=null) {
+						boolean isUsedBoard = usedBoards.contains(newb2);
+						if (!hasRecursiveBoard && isUsedBoard) {
+							hasRecursiveBoard = true;
+						}
+						if (i!=map.length-1 || j!=map[0].length-1 || !isUsedBoard)
+							next.add(newb2);
 					}
 				}
 				current = next;
+				if (current.isEmpty()) {
+					return hasRecursiveBoard;
+				}
 				next = new ArrayList<>();
 			}
 		}
 		
-		return current;
+		return hasRecursiveBoard;
 	}
 
 	private Board trySymbol(char symb, int row, int col, Board board) {
@@ -101,48 +116,36 @@ class Board {
 		int r=row-1;
 		int c=col-1;
 		if (inBoundary(r,c)) {
-			if (check(board,r,c)) {
-				return board;
-			} else {
+			if (!check(board,r,c)) 
 				return null;
-			}
 		}
-		if (col==map[0].length) {
+		if (col==map[0].length-1) {
 			r=row-1;
 			c = col;
-			if (check(board,r,c)) {
-				return board;
-			} else {
+			if (!check(board,r,c)) 
 				return null;
-			}
 		}
 		
-		if (row == map.length) {
+		if (row == map.length-1) {
 			r=row;
 			c = col-1;
 			if (inBoundary(r,c)) {
-				if (check(board,r,c)) {
-					return board;
-				} else {
+				if (!check(board,r,c))
 					return null;
-				}
 			}
 		}
-		if (row==map.length && col==map[0].length) {
-			if (check(board,row,col)) {
-				return board;
-			} else {
+		if (row==map.length-1 && col==map[0].length-1) {
+			if (!check(board,row,col)) 
 				return null;
-			}
 		}
-		return null;
+		return board;
 	}
 
 	private boolean check(Board board, int row, int col) {
 		// TODO Auto-generated method stub
 		int countLive = 0;
-		for (int i=row-1;i<row+1;i++) {
-			for (int j=col-1;j<col+1;j++) {
+		for (int i=row-1;i<=row+1;i++) {
+			for (int j=col-1;j<=col+1;j++) {
 				if (i==row && col==j) {
 					continue;
 				}
@@ -153,35 +156,19 @@ class Board {
 				}
 			}
 		}
+		char expect;
 		if (board.map[row][col] == '.') {
-			if (map[row][col]=='.') {
-				if (countLive>Main.c) {
-					return false;
-				} else {
-					return true;
-				}
-			} else { // current is '*'
-				if (countLive>Main.c) {
-					return true;
-				} else {
-					return false;
-				}
-			}
+			if (countLive>Main.c)
+				expect = '*';
+			else
+				expect = '.';
 		} else { //prev is '*'
-			if (map[row][col]=='.') {
-				if (countLive<Main.a || countLive>Main.b) {
-					return true;
-				} else {
-					return false;
-				}
-			} else { // current is '*'
-				if (countLive<Main.a || countLive>Main.b) {
-					return false;
-				} else {
-					return true;
-				}
-			}
+			if (countLive<Main.a || countLive>Main.b)
+				expect = '.';
+			else 
+				expect = '*';
 		}
+		return expect == map[row][col];
 	}
 
 	private boolean inBoundary(int r, int c) {
@@ -193,9 +180,12 @@ class Board {
 		// TODO Auto-generated method stub
 		Board rt = new Board(map.length,map[0].length);
 		for (int i=0;i<r;i++) {
-			for (int j=0;j<c;j++) {
+			for (int j=0;j<map[0].length;j++) {
 				rt.map[i][j] = map[i][j];
 			}
+		}
+		for (int j=0;j<=c;j++) {
+			rt.map[r][j] = map[r][j];
 		}
 		return rt;
 	}
@@ -231,6 +221,4 @@ class Board {
 			return false;
 		return true;
 	}
-	
-	
 }
